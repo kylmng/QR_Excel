@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR to Excel Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        #reader { width: 100%; max-width: 500px; margin: auto; }
+        #result { margin-top: 20px; color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>QR Scan</h1>
+    <div id="reader"></div>
+    <div id="result"></div>
+
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            // Stop scanning once we find a result to avoid duplicate entries
+            html5QrcodeScanner.clear();
+            
+            document.getElementById('result').innerText = "Scanning... please wait.";
+            console.log('decodedText:', decodedText);
+            // Send the data to our Flask API
+            fetch('/append', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: 'test.xlsx', qr_data: decodedText })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('result').innerText = "Saved " + decodedText + " to excel!";
+                // Restart scanner after 3 seconds so you can scan another one
+                setTimeout(() => {
+                    location.reload();
+                }, 3000);
+            })
+            .catch(err => {
+                document.getElementById('result').innerText = "Error saving data.";
+                console.error(err);
+            });
+        }
+
+        // Initialize the scanner
+        const html5QrcodeScanner = new Html5QrcodeScanner(
+            "reader", { fps: 10, qrbox: 250 }
+        );
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>
